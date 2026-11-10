@@ -1,19 +1,26 @@
 import {
   createEmptyBoard,
-  placeMinesAvoidingCell,
-  computeTrueValues,
-  chooseLiar,
   revealCell,
   createBoardFromFixedLayout,
 } from './board.js';
+import {generateSolvableBoard} from './generator.js';
+
+export const DIFFICULTIES = Object.freeze({
+  easy: Object.freeze({rows: 9, columns: 9, mineCount: 10}),
+  medium: Object.freeze({rows: 12, columns: 12, mineCount: 24}),
+});
 
 // Keep state independent of the DOM so controlled boards can test the rules later.
 export const gameState = {
+  difficulty: 'easy',
   rows: 9,
   columns: 9,
   mineCount: 10,
   board: [],
   isBoardGenerated: false,
+  isGenerating: false,
+  startedAt: null,
+  finishedAt: null,
   lives: 5,
   verificationsLeft: 3,
   flagCount: 0,
@@ -41,15 +48,21 @@ export function getStatusSummary(state) {
 }
 
 /** Reset a session without generating mines before the player's first reveal. */
-export function newGame() {
+export function newGame(difficulty = gameState.difficulty) {
+  if (!Object.hasOwn(DIFFICULTIES, difficulty)) throw new RangeError('Unknown difficulty.');
+  const {rows, columns, mineCount} = DIFFICULTIES[difficulty];
   // Preserve debug configuration so New Game can reproduce the same fixture.
   Object.assign(gameState, {
-    rows: 9,
-    columns: 9,
+    difficulty,
+    rows,
+    columns,
     mineCount: gameState.debugMode && gameState.fixedLayout
-      ? gameState.fixedLayout.mineCoordinates.length : 10,
-    board: createEmptyBoard(9, 9),
+      ? gameState.fixedLayout.mineCoordinates.length : mineCount,
+    board: createEmptyBoard(rows, columns),
     isBoardGenerated: false,
+    isGenerating: false,
+    startedAt: null,
+    finishedAt: null,
     lives: 5,
     verificationsLeft: 3,
     flagCount: 0,
@@ -61,8 +74,8 @@ export function newGame() {
 }
 
 /** Coordinate reveals so board mechanics do not need lives or victory state. */
-export function handleReveal(row, column) {
-  if (gameState.status !== 'playing') return;
+export function handleReveal(row, column, now, preparedBoard = null) {
+  if (gameState.status !== 'playing' || gameState.isGenerating) return;
   // Verify clicks must reach revealed cells without entering the reveal path.
   if (gameState.mode === 'verify') {
     handleVerify(row, column);
@@ -77,7 +90,7 @@ export function handleReveal(row, column) {
       let fixedBoard;
       try {
         fixedBoard = createBoardFromFixedLayout(
-          mineCoordinates, liarCoordinate, liarDisplayedValue, 9, 9,
+          mineCoordinates, liarCoordinate, liarDisplayedValue, gameState.rows, gameState.columns,
         );
       } catch (error) {
         gameState.message = `Invalid debug layout: ${error.message}`;
@@ -88,16 +101,17 @@ export function handleReveal(row, column) {
         gameState.message = 'Debug layout: choose a safe cell for the first reveal.';
         return;
       }
-      for (const fixedCell of fixedBoard.flat()) {
-        fixedCell.isFlagged = gameState.board[fixedCell.row][fixedCell.column].isFlagged;
-      }
-      gameState.board = fixedBoard;
+      preparedBoard = fixedBoard;
     } else {
-      placeMinesAvoidingCell(gameState.board, gameState.mineCount, row, column);
-      computeTrueValues(gameState.board);
-      chooseLiar(gameState.board);
+      preparedBoard ??= generateSolvableBoard(gameState.rows, gameState.columns,
+        gameState.mineCount, row, column).board;
     }
+    for (const generatedCell of preparedBoard.flat()) {
+      generatedCell.isFlagged = gameState.board[generatedCell.row][generatedCell.column].isFlagged;
+    }
+    gameState.board = preparedBoard;
     gameState.isBoardGenerated = true;
+    gameState.startedAt = now ?? performance.now();
   }
 
   const newlyRevealedCells = revealCell(gameState.board, row, column);
@@ -105,9 +119,9 @@ export function handleReveal(row, column) {
   // Only this reveal's hits cost lives; exposing mines at the end costs nothing.
   gameState.lives -= newlyHitMines;
   if (gameState.lives === 0) {
-    finishGame('lost');
+    finishGame('lost', now ?? performance.now());
   } else if (gameState.board.flat().every((boardCell) => boardCell.isMine || boardCell.isRevealed)) {
-    finishGame('won');
+    finishGame('won', now ?? performance.now());
   } else {
     gameState.message = newlyHitMines > 0
       ? 'A little bump! You can keep exploring.' : 'One clue is mischievous. Take your time.';
@@ -116,7 +130,7 @@ export function handleReveal(row, column) {
 
 /** Treat flags as player notes rather than a correctness or victory check. */
 export function handleFlag(row, column) {
-  if (gameState.status !== 'playing') return;
+  if (gameState.status !== 'playing' || gameState.isGenerating) return;
   const cell = gameState.board[row]?.[column];
   if (!cell || cell.isRevealed) return;
   cell.isFlagged = !cell.isFlagged;
@@ -128,7 +142,7 @@ export function handleFlag(row, column) {
  * Omit coordinates to toggle mode; provide both to attempt a verification.
  */
 export function handleVerify(row, column) {
-  if (gameState.status !== 'playing' || gameState.verificationsLeft <= 0) return;
+  if (gameState.status !== 'playing' || gameState.isGenerating || gameState.verificationsLeft <= 0) return;
   if (row === undefined && column === undefined) {
     gameState.mode = gameState.mode === 'verify' ? 'reveal' : 'verify';
     gameState.message = gameState.mode === 'verify'
@@ -150,8 +164,9 @@ export function handleVerify(row, column) {
 }
 
 /** Preserve the original clue so verification cannot erase the punchline. */
-function finishGame(status) {
+function finishGame(status, now) {
   gameState.status = status;
+  gameState.finishedAt = now;
   gameState.mode = 'reveal';
   const liar = gameState.board.flat().find((cell) => cell.isLiar);
   gameState.result = {
@@ -166,4 +181,14 @@ function finishGame(status) {
   gameState.message = status === 'won'
     ? 'Lovely detective work! Every safe cell is clear.'
     : 'Out of lives — the mischievous clue has been unmasked. Fancy another round?';
+}
+
+/** Use a monotonic clock; reading time never mutates game state. */
+export function getElapsedSeconds(state, now = performance.now()) {
+  if (state.startedAt === null) return 0;
+  return Math.max(0, Math.floor(((state.finishedAt ?? now) - state.startedAt) / 1000));
+}
+
+export function formatElapsedTime(seconds) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 }

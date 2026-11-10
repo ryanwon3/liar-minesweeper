@@ -18,10 +18,10 @@ It is fun because ordinary Minesweeper logic stops being fully reliable. Every d
 - Right-click a covered cell to toggle a flag. The browser context menu must not appear.
 - A flagged cell cannot be revealed until it is unflagged. Flags are the player's own notes and are never checked for correctness.
 - A cell's **true value** is the number of mines among its (up to 8) neighbors, including diagonals.
-- The board is generated on the first reveal. The first clicked cell is never a mine. Its neighbors are not guaranteed safe.
+- The board is generated on the first reveal. The first clicked cell is never a mine. Solvability filtering may select a larger safe opening; custom debug layouts can still put mines beside the first click.
 
 ### The liar
-- Right after mines and true values are generated, choose exactly one liar uniformly at random from all non-mine cells. This includes true-0 cells and the first-clicked cell.
+- For each candidate layout, right after mines and true values are generated, choose exactly one liar uniformly at random from all non-mine cells. This includes true-0 cells and the first-clicked cell. The solvable generator rejects candidates without a certified solution, so accepted layouts and liar positions are filtered rather than uniformly distributed over every possible game.
 - The liar is chosen before the first reveal is resolved, so the first reveal or its flood fill may already show the liar.
 - The liar's displayed value is its true value +1 or -1. A true 0 can only show 1. A true 8 can only show 7. For true values 1 to 7, choose +1 or -1 with equal probability.
 - The liar's position and original displayed value are fixed for the whole game.
@@ -61,12 +61,14 @@ It is fun because ordinary Minesweeper logic stops being fully reliable. Every d
 - Debug mode (see criterion 1) so the rules can be tested on fixed boards.
 - Web version in HTML, CSS, and JavaScript.
 
-**Intended extensions (will probably not be reached in Phase 1)**
-- Difficulty selection, e.g. Easy (9 x 9, 10 mines) and Medium (12 x 12, 24 mines).
-- Elapsed-time display (informational only, no deadline).
+**Implemented extensions (November 10, 2026)**
+- Difficulty selection: Easy (9 x 9, 10 mines) and Medium (12 x 12, 24 mines). Changing difficulty starts a fresh game; New Game retains the selection.
+- Informational elapsed time, with no deadline. It remains zero before play, starts after generation on the first eligible reveal, freezes at victory or defeat, and resets on restart or difficulty change.
+- Guaranteed-solvable generation: every returned normal board has a certified no-guessing path, without mine hits, using at most the existing 3 verifications. The solver considers each possible revealed liar with either legal offset, an unseen liar, and a previously verified liar. It accepts only deductions shared by every surviving hypothesis. Candidates that cannot be certified are rejected. A bounded, also-certified fallback prevents indefinite retries and can open the whole safe area immediately. This guarantees a solution exists; it does not guarantee recovery from arbitrary wasted verifications or incorrect flags. Custom debug layouts remain exact and are exempt from certification. See `docs/solvability.md`.
+
+**Remaining optional extensions**
 - Gentle sound effects with a mute button.
 - A player-controlled "suspicious" marker, separate from flags and verification.
-- A guaranteed-solvable board generator. It would need a solver that considers every possible liar location and offset, not just one where all clues are honest. Without it, random boards may require guessing, and the game should not claim otherwise.
 
 ## Acceptance Criteria
 
@@ -86,6 +88,9 @@ It is fun because ordinary Minesweeper logic stops being fully reliable. Every d
 14. After victory or defeat: reveal, flag, and verify are disabled, remaining mines are shown, and the liar is highlighted with its true and original displayed value. This works for an unopened liar and for an already verified liar.
 15. New Game restores lives to 5, verifications to 3, clears flags and the result, and generates a new layout and liar only on the next first reveal.
 16. The screen explains the one-liar rule, the +1/-1 offset, true-value flood fill, how to verify, the lives rule, and the win condition. Lives, verifications left, flag count, mode, and status always match the actual game state.
+17. Difficulty selection renders the selected dimensions and mine count, starts a new game when changed, and is retained by New Game. Changing difficulty or restarting during generation cancels the old result.
+18. Elapsed time stays at zero before the first eligible reveal, advances during play, freezes on either outcome, and resets with New Game or difficulty selection. Generation time is excluded; there is no deadline.
+19. Every normal generated board has a replayable, no-mine-hit solution under the one-liar rules using at most 3 verifications. The deduction engine uses only public observations and known mine count, and cannot assume all clues are honest. The bounded fallback is certified too; custom debug layouts are clearly identified as exempt.
 
 ## Priorities
 
@@ -93,8 +98,8 @@ It is fun because ordinary Minesweeper logic stops being fully reliable. Every d
 
 **Next:** criteria 10 to 15 (verification, lives, win and defeat, end reveal, New Game), then 16 (on-screen explanations).
 
-**Extensions** (after all criteria above work): difficulty selection, then the timer, sound, and suspicious marker. The guaranteed-solvable generator is the largest risk and is not required.
+**Extensions:** difficulty selection, elapsed time, and solvable generation are implemented. Sound and suspicious markers remain optional future work.
 
-**If time runs short, cut in this order:** solvable generator, sound, timer, suspicious marker, difficulty selection. Keep one playable 9 x 9 configuration. Spend remaining time fixing the core rules and documenting what is unfinished.
+**Current priority:** preserve the core rules and the three implemented extensions; sound and suspicious markers can wait.
 
 Phase 1 is not expected to finish everything. The README will honestly report which criteria are met.

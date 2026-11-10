@@ -17,14 +17,22 @@
         <div><dt>Verifications left</dt><dd id="verifications-left">3</dd></div>
         <div><dt>Mines</dt><dd id="mines">10</dd></div>
         <div><dt>Flags</dt><dd id="flags">0</dd></div>
+        <div><dt>Elapsed time</dt><dd id="elapsed-time" aria-live="off">00:00</dd></div>
         <div><dt>Mode</dt><dd id="mode">Reveal</dd></div>
         <div><dt>Status</dt><dd id="status">Playing — choose a cell.</dd></div>
       </dl>
 
       <div id="controls">
+        <label for="difficulty">Difficulty
+          <select id="difficulty">
+            <option value="easy">Easy · 9 × 9 · 10 mines</option>
+            <option value="medium">Medium · 12 × 12 · 24 mines</option>
+          </select>
+        </label>
         <button id="verify-button" type="button" aria-pressed="false">Verify</button>
         <button id="new-game-button" type="button">New Game</button>
       </div>
+      <p class="game-note" id="generation-note">Every generated board has a no-guessing solution using at most 3 verifications. The clock is just for you — take your time.</p>
 
       <div id="board" aria-label="Minesweeper board"></div>
       <p id="game-result" role="status" hidden></p>
@@ -37,6 +45,7 @@
         <p><strong>Check a clue.</strong> You have 3 verifications per game. Click Verify, then a revealed safe number (or blank) to show its true value with a permanent ✓ mark. Verify mode then turns off. Click Verify again to cancel for free. Covered cells, mines, and already verified cells use nothing and leave verify mode on. Verification never opens neighbors.</p>
         <p><strong>Room for mistakes.</strong> You start with 5 lives. Each newly revealed mine costs 1 life; the 5th distinct mine hit ends the game. Clicking a hit mine again costs nothing.</p>
         <p><strong>Clear the board.</strong> Reveal every non-mine cell to win. Finding the liar is optional; flagging mines alone does not win. At the end, all mines and both the liar's true and original displayed values are shown. New Game gives you a fresh start. Take your time!</p>
+        <p><strong>Your pace, your challenge.</strong> Choose Easy (9 × 9, 10 mines) or Medium (12 × 12, 24 mines). Changing difficulty starts a new game. The timer starts on your first reveal, stops at the result, and has no time limit. Generated boards are checked against the one-liar rules for a safe deduction path using at most 3 verifications. Custom debug layouts are not checked for solvability.</p>
       </details>
     </main>
   </body>

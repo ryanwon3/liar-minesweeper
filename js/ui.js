@@ -1,4 +1,4 @@
-import { getStatusSummary } from './game.js';
+import {getStatusSummary, getElapsedSeconds, formatElapsedTime} from './game.js';
 
 /** Keep page updates separate so rendering cannot alter the game's deductions. */
 export function renderGame(gameState) {
@@ -22,6 +22,8 @@ export function renderBoard(gameState) {
   const focusedColumn = focusedCell?.dataset.column;
   const fragment = document.createDocumentFragment();
   const isGameOver = gameState.status === 'won' || gameState.status === 'lost';
+  boardElement.style.setProperty('--columns', gameState.columns);
+  boardElement.setAttribute('aria-busy', String(gameState.isGenerating));
 
   for (const cell of gameState.board.flat()) {
     const button = document.createElement('button');
@@ -29,7 +31,7 @@ export function renderBoard(gameState) {
     button.className = 'cell';
     button.dataset.row = cell.row;
     button.dataset.column = cell.column;
-    button.disabled = isGameOver;
+    button.disabled = isGameOver || gameState.isGenerating;
     let description = 'covered';
     if (isGameOver && cell.isLiar) {
       button.classList.add('is-revealed', 'is-liar');
@@ -98,15 +100,25 @@ export function renderStatus(gameState) {
   document.getElementById('verifications-left').textContent = summary.verificationsLeft;
   document.getElementById('mines').textContent = summary.mineCount;
   document.getElementById('flags').textContent = summary.flagCount;
+  document.getElementById('difficulty').value = gameState.difficulty;
+  document.getElementById('generation-note').textContent = gameState.debugMode && gameState.fixedLayout
+    ? 'Custom debug layout — solvability is not checked. The clock has no time limit.'
+    : 'Every generated board has a no-guessing solution using at most 3 verifications. The clock is just for you — take your time.';
+  renderElapsedTime(gameState);
   const modeLabel = summary.mode === 'verify' ? 'Verify' : 'Reveal';
   document.getElementById('mode').textContent = summary.debugMode ? `${modeLabel} (debug)` : modeLabel;
   const statusLabel = { playing: 'Playing', won: 'Won', lost: 'Lost' }[summary.status];
   document.getElementById('status').textContent = `${statusLabel} — ${summary.message}`;
   const verifyButton = document.getElementById('verify-button');
-  verifyButton.disabled = summary.status !== 'playing' || summary.verificationsLeft === 0;
+  verifyButton.disabled = summary.status !== 'playing' || gameState.isGenerating || summary.verificationsLeft === 0;
   verifyButton.setAttribute('aria-pressed', String(summary.mode === 'verify'));
   verifyButton.title = summary.mode === 'verify'
     ? 'Cancel verification without using a verification.' : 'Check a revealed safe cell’s true value.';
+}
+
+/** A timer tick updates only its text, preserving board focus and hover state. */
+export function renderElapsedTime(gameState) {
+  document.getElementById('elapsed-time').textContent = formatElapsedTime(getElapsedSeconds(gameState));
 }
 
 /**
@@ -130,6 +142,7 @@ export function attachEventHandlers(handlers) {
     }
   };
   document.getElementById('new-game-button').onclick = () => handlers.onNewGame();
+  document.getElementById('difficulty').onchange = event => handlers.onDifficultyChange(event.target.value);
   const verifyButton = document.getElementById('verify-button');
   verifyButton.onclick = () => {
     if (!verifyButton.disabled) handlers.onVerify();

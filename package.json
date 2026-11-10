@@ -1,0 +1,9 @@
+{
+  "name": "liar-minesweeper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node js/board.test.js && node js/game.test.js && node js/solver.test.js && node js/generator.test.js && node js/extensions.test.js"
+  },
+  "engines": {"node": ">=20"}
+}
