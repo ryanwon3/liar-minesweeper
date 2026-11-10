@@ -71,11 +71,38 @@ An independent code review also checked 47,359 deductions against 20,000 additio
 
 On November 10, 2026, all 16 original core acceptance criteria passed desktop in-app browser validation. The extension browser checks cover both rendered board sizes, worker-generated mine/liar counts and first-click safety, flags, verification, timer start/reset/freeze, and restart/difficulty behavior. Other browsers and mobile/touch behavior are not claimed tested.
 
+## Acceptance criteria verification
+
+All 19 acceptance criteria from [SPEC.md](SPEC.md) are verified **Yes**, based on the automated checks and desktop browser validation recorded above on November 10, 2026.
+
+| # | Acceptance criterion | Verified? |
+|---|---|---|
+| 1 | The game has a debug mode (for example a URL parameter like `?debug=1`) that shows every cell's true value, displayed value, mine status, and liar status, and can load a fixed board layout. Criteria below that say "controlled board" use this. | Yes |
+| 2 | The default game shows 81 covered cells in a 9 x 9 grid. After the first reveal, exactly 10 distinct cells are mines. | Yes |
+| 3 | The first reveal is never a mine, tested at a corner, an edge, and an interior cell. | Yes |
+| 4 | Left-click reveals a covered unflagged cell. Right-click toggles a flag on a covered cell without opening the browser context menu. Left-clicking a flagged cell does nothing. | Yes |
+| 5 | Each safe cell's true value equals its actual neighboring mine count, including diagonals and board edges. | Yes |
+| 6 | After generation, exactly one safe cell's displayed value differs from its true value, by exactly 1. Every other safe cell displays its true value. Across many generated boards, true-0 cells and the first-clicked cell are sometimes the liar. | Yes |
+| 7 | On controlled boards: a true 0 liar displays 1, a true 8 liar displays 7, and a liar with true value 1 to 7 may show either +1 or -1. The liar's position and original value do not change during play or verification. | Yes |
+| 8 | Revealing a true-0 cell expands the connected zero region and its safe boundary without opening any mine or flagged cell. | Yes |
+| 9 | A true-0 liar displaying 1 still expands. A true-1 liar displaying 0 does not expand and visibly shows "0". | Yes |
+| 10 | A valid verification reduces the verifications-left counter by exactly 1, shows the cell's true value, and adds a persistent verified marker. Clicking a covered cell, a mine, or an already verified cell in verify mode uses nothing. Cancelling verify mode uses nothing. At 0 left, verification cannot be used. | Yes |
+| 11 | Verifying the liar shows its true value and does not create a new liar. Verifying any cell does not open its neighbors. | Yes |
+| 12 | The first 4 distinct mine hits each remove 1 life and play continues. The 5th causes defeat. Clicking a previously hit mine removes no life. Other cells' true and displayed values do not change after a hit. | Yes |
+| 13 | Revealing the last non-mine cell causes victory, even with unflagged mines or an unverified liar. Flagging every mine without revealing every safe cell does not cause victory. | Yes |
+| 14 | After victory or defeat: reveal, flag, and verify are disabled, remaining mines are shown, and the liar is highlighted with its true and original displayed value. This works for an unopened liar and for an already verified liar. | Yes |
+| 15 | New Game restores lives to 5, verifications to 3, clears flags and the result, and generates a new layout and liar only on the next first reveal. | Yes |
+| 16 | The screen explains the one-liar rule, the +1/-1 offset, true-value flood fill, how to verify, the lives rule, and the win condition. Lives, verifications left, flag count, mode, and status always match the actual game state. | Yes |
+| 17 | Difficulty selection renders the selected dimensions and mine count, starts a new game when changed, and is retained by New Game. Changing difficulty or restarting during generation cancels the old result. | Yes |
+| 18 | Elapsed time stays at zero before the first eligible reveal, advances during play, freezes on either outcome, and resets with New Game or difficulty selection. Generation time is excluded; there is no deadline. | Yes |
+| 19 | Every normal generated board has a replayable, no-mine-hit solution under the one-liar rules using at most 3 verifications. The deduction engine uses only public observations and known mine count, and cannot assume all clues are honest. The bounded fallback is certified too; custom debug layouts are clearly identified as exempt. | Yes |
+
 ## Code map
 
 | File | Responsibility |
 |---|---|
 | `SPEC.md` | Rules and core/extension acceptance criteria. |
+| [handoffreport.md](handoffreport.md) | Reflections on the spec, acceptance criteria, and code organization. |
 | `index.html`, `style.css` | Controls, counters, rules, and responsive board styling. |
 | `js/board.js` | Board model, mine counts, liar selection, true-value flood fill, and fixed fixtures. |
 | `js/game.js` | Difficulty presets, game state/actions, lives, outcomes, verification, and elapsed-time lifecycle. |
