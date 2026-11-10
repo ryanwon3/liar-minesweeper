@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Liar Minesweeper</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="js/main.js"></script>
+  </head>
+  <body>
+    <main id="game">
+      <h1>Liar Minesweeper</h1>
+      <p>One clue is a little mischievous.</p>
+
+      <dl id="status-bar" aria-label="Game information" aria-live="polite">
+        <div><dt>Lives</dt><dd id="lives">5</dd></div>
+        <div><dt>Verifications left</dt><dd id="verifications-left">3</dd></div>
+        <div><dt>Mines</dt><dd id="mines">10</dd></div>
+        <div><dt>Flags</dt><dd id="flags">0</dd></div>
+        <div><dt>Mode</dt><dd id="mode">Reveal</dd></div>
+        <div><dt>Status</dt><dd id="status">Playing — choose a cell.</dd></div>
+      </dl>
+
+      <div id="controls">
+        <button id="verify-button" type="button" aria-pressed="false">Verify</button>
+        <button id="new-game-button" type="button">New Game</button>
+      </div>
+
+      <div id="board" aria-label="Minesweeper board"></div>
+      <p id="game-result" role="status" hidden></p>
+
+      <details id="rules">
+        <summary id="rules-heading">Rules &amp; controls — meet the mischievous clue</summary>
+        <p><strong>One little fib.</strong> Exactly one safe cell shows a wrong number, off by exactly 1 (+1 or −1). Every other clue counts neighboring mines, including diagonals.</p>
+        <p><strong>Clicks &amp; notes.</strong> Left-click to reveal; right-click to flag or unflag a covered cell. Unflag it before revealing. Flags are just your own notes and are never checked. Your first reveal is safe; its neighbors might not be!</p>
+        <p><strong>Watch what opens.</strong> Flood fill uses <strong>true values</strong>: a true-0 liar showing 1 still expands, while a true-1 liar showing 0 does not. That can be a clue! A liar displaying zero shows an explicit “0”; an ordinary, unverified true-0 cell is blank.</p>
+        <p><strong>Check a clue.</strong> You have 3 verifications per game. Click Verify, then a revealed safe number (or blank) to show its true value with a permanent ✓ mark. Verify mode then turns off. Click Verify again to cancel for free. Covered cells, mines, and already verified cells use nothing and leave verify mode on. Verification never opens neighbors.</p>
+        <p><strong>Room for mistakes.</strong> You start with 5 lives. Each newly revealed mine costs 1 life; the 5th distinct mine hit ends the game. Clicking a hit mine again costs nothing.</p>
+        <p><strong>Clear the board.</strong> Reveal every non-mine cell to win. Finding the liar is optional; flagging mines alone does not win. At the end, all mines and both the liar's true and original displayed values are shown. New Game gives you a fresh start. Take your time!</p>
+      </details>
+    </main>
+  </body>
+</html>
